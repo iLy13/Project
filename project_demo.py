@@ -1,19 +1,13 @@
 import os
 import sys
 import pygame
+import time
 from pygame.math import Vector2
 
 pygame.init()
 size = width, height = 1000, 1000
 screen = pygame.display.set_mode(size)
 all_sprites = pygame.sprite.Group()
-
-
-def rotate(im, angle, pivot):
-    image = pygame.transform.rotate(im, angle)
-    rect = image.get_rect()
-    rect.center = pivot
-    return image
 
 
 def load_image(name, colorkey=None):
@@ -30,6 +24,20 @@ def load_image(name, colorkey=None):
     else:
         image = image.convert_alpha()
     return image
+
+
+class Camera:
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    def apply(self, obj):
+        obj.rect.x += self.dx
+        obj.rect.y += self.dy
+
+    def update(self, target):
+        self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
+        self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
 
 
 class Pers(pygame.sprite.Sprite):
@@ -74,12 +82,11 @@ class Pers(pygame.sprite.Sprite):
         bullet.image = pygame.transform.scale(bullet.image, (dw // 15, dh // 15))
         orig = bullet.image
         bullet.image = pygame.transform.rotate(orig, - angle)
+        bullet.rect.x = self.rect.x
+        bullet.rect.y = self.rect.y
         screen.blit(bullet.image, bullet.rect)
 
 
-van = pygame.sprite.Sprite(all_sprites)
-van.image = load_image('dust.png')
-van.rect = van.image.get_rect()
 arrow = pygame.sprite.Sprite(all_sprites)
 arrow.image = load_image("cross.png")
 arrow.rect = arrow.image.get_rect()
@@ -89,8 +96,8 @@ def main():
     running = True
     fps = 60
     clock = pygame.time.Clock()
-    pers = Pers(width // 2, height // 2, 2)
-    MYEVENTTYPE = pygame.USEREVENT + 1
+    pers = Pers(width // 2, height // 2, 3)
+    camera = Camera()
     while running:
         pygame.mouse.set_visible(False)
         screen.fill((255, 255, 255))
@@ -99,12 +106,12 @@ def main():
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pers.shoot()
-                pygame.time.set_timer(MYEVENTTYPE, 10)
-                if event.type == MYEVENTTYPE:
-                    pass
         pers.update(pygame.key.get_pressed())
         if pygame.mouse.get_focused():
             arrow.rect.x, arrow.rect.y = pygame.mouse.get_pos()[0] - 30, pygame.mouse.get_pos()[1] - 30
+        camera.update(pers)
+        for sprite in all_sprites:
+            camera.apply(sprite)
         all_sprites.draw(screen)
         pygame.display.flip()
         clock.tick(fps)

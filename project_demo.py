@@ -1,12 +1,14 @@
 import os
 import sys
+import random
 import pygame
-import time
+import math
 from pygame.math import Vector2
 
 pygame.init()
 size = width, height = 1000, 1000
 screen = pygame.display.set_mode(size)
+screen_rect = (0, 0, width, height)
 all_sprites = pygame.sprite.Group()
 
 
@@ -40,6 +42,31 @@ class Camera:
         self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
 
 
+class Bullet:
+    def __init__(self, x, y, mx, my, speed):
+        self.pos = (x, y)
+        self.speed = speed
+        self.dir = (mx - x, my - y)
+        length = math.hypot(*self.dir)
+        if length == 0.0:
+            self.dir = (0, -1)
+        else:
+            self.dir = (self.dir[0] / length, self.dir[1] / length)
+        angle = math.degrees(math.atan2(-self.dir[1], self.dir[0]))
+
+        self.bullet = pygame.Surface((7, 2)).convert_alpha()
+        self.bullet.fill((255, 176, 46))
+        self.bullet = pygame.transform.rotate(self.bullet, angle)
+
+    def update(self):
+        self.pos = (self.pos[0] + self.dir[0] * self.speed,
+                    self.pos[1] + self.dir[1] * self.speed)
+
+    def draw(self, surf):
+        bullet_rect = self.bullet.get_rect(center=self.pos)
+        surf.blit(self.bullet, bullet_rect)
+
+
 class Pers(pygame.sprite.Sprite):
     def __init__(self, dx, dy, speed):
         super().__init__(all_sprites)
@@ -67,29 +94,23 @@ class Pers(pygame.sprite.Sprite):
     def rotate(self):
         x, y, w, h = self.rect
         direction = pygame.mouse.get_pos() - Vector2(x + w // 2, y + h // 2)
-        radius, angle = direction.as_polar()
-        self.image = pygame.transform.rotate(self.orig, - angle)
+        radius, self.angle = direction.as_polar()
+        self.image = pygame.transform.rotate(self.orig, - self.angle)
         self.rect = self.image.get_rect(center=self.rect.center)
 
     def shoot(self):
-        x, y, w, h = self.rect
-        direction = pygame.mouse.get_pos() - Vector2(x + w // 2, y + h // 2)
-        radius, angle = direction.as_polar()
-        bullet = pygame.sprite.Sprite(all_sprites)
-        bullet.image = load_image('shot.jpg', -1)
-        bullet.rect = bullet.image.get_rect()
-        dx, dy, dw, dh = bullet.rect
-        bullet.image = pygame.transform.scale(bullet.image, (dw // 15, dh // 15))
-        orig = bullet.image
-        bullet.image = pygame.transform.rotate(orig, - angle)
-        bullet.rect.x = self.rect.x
-        bullet.rect.y = self.rect.y
-        screen.blit(bullet.image, bullet.rect)
+        mx, my = pygame.mouse.get_pos()
+        bullet = Bullet(self.rect.centerx, self.rect.centery, mx, my, 30)
+        bullets.append(bullet)
 
 
+van = pygame.sprite.Sprite(all_sprites)
+van.image = load_image("dust.png")
+van.rect = van.image.get_rect()
 arrow = pygame.sprite.Sprite(all_sprites)
 arrow.image = load_image("cross.png")
 arrow.rect = arrow.image.get_rect()
+bullets = []
 
 
 def main():
@@ -107,12 +128,18 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pers.shoot()
         pers.update(pygame.key.get_pressed())
+        for bullet in bullets[:]:
+            bullet.update()
+            if not screen.get_rect().collidepoint(bullet.pos):
+                bullets.remove(bullet)
         if pygame.mouse.get_focused():
             arrow.rect.x, arrow.rect.y = pygame.mouse.get_pos()[0] - 30, pygame.mouse.get_pos()[1] - 30
         camera.update(pers)
         for sprite in all_sprites:
             camera.apply(sprite)
         all_sprites.draw(screen)
+        for bullet in bullets:
+            bullet.draw(screen)
         pygame.display.flip()
         clock.tick(fps)
 

@@ -107,6 +107,7 @@ class Pers(pygame.sprite.Sprite):
 van = pygame.sprite.Sprite(all_sprites)
 van.image = load_image("dust.png")
 van.rect = van.image.get_rect()
+
 arrow = pygame.sprite.Sprite(all_sprites)
 arrow.image = load_image("cross.png")
 arrow.rect = arrow.image.get_rect()

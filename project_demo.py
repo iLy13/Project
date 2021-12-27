@@ -1,19 +1,17 @@
 import os
 import sys
+import random
 import pygame
+import math
+from pygame.display import set_gamma_ramp
 from pygame.math import Vector2
 
 pygame.init()
 size = width, height = 1000, 1000
 screen = pygame.display.set_mode(size)
+screen_rect = (0, 0, width, height)
 all_sprites = pygame.sprite.Group()
-
-
-def rotate(im, angle, pivot):
-    image = pygame.transform.rotate(im, angle)
-    rect = image.get_rect()
-    rect.center = pivot
-    return image
+enemies_sprites = pygame.sprite.Group()
 
 
 def load_image(name, colorkey=None):
@@ -32,11 +30,51 @@ def load_image(name, colorkey=None):
     return image
 
 
+class Camera:
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    def apply(self, obj):
+        obj.rect.x += self.dx
+        obj.rect.y += self.dy
+
+    def update(self, target):
+        self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
+        self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
+
+
+class Bullet:
+    def __init__(self, x, y, mx, my, speed):
+        self.pos = (x, y)
+        self.speed = speed
+        self.dir = (mx - x, my - y)
+        length = math.hypot(*self.dir)
+        if length == 0.0:
+            self.dir = (0, -1)
+        else:
+            self.dir = (self.dir[0] / length, self.dir[1] / length)
+        angle = math.degrees(math.atan2(-self.dir[1], self.dir[0]))
+
+        self.bullet = pygame.Surface((7, 2)).convert_alpha()
+        self.bullet.fill((255, 176, 46))
+        self.bullet = pygame.transform.rotate(self.bullet, angle)
+
+    def update(self):
+        self.pos = (self.pos[0] + self.dir[0] * self.speed,
+                    self.pos[1] + self.dir[1] * self.speed)
+
+    def draw(self, surf):
+        bullet_rect = self.bullet.get_rect(center=self.pos)
+        surf.blit(self.bullet, bullet_rect)
+
+
 class Pers(pygame.sprite.Sprite):
     def __init__(self, dx, dy, speed):
         super().__init__(all_sprites)
         self.speed = speed
         self.image = load_image("sprite.png")
+        self.image = pygame.transform.scale(self.image, (50, 50))
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect(center=(dx, dy))
         self.rect.x = dx
@@ -44,7 +82,7 @@ class Pers(pygame.sprite.Sprite):
         self.orig = self.image
         screen.blit(self.image, self.rect)
 
-    def update(self, keys):
+    def update(self):
         key = pygame.key.get_pressed()
         if key[pygame.K_s]:
             self.rect.y += self.speed
@@ -59,38 +97,66 @@ class Pers(pygame.sprite.Sprite):
     def rotate(self):
         x, y, w, h = self.rect
         direction = pygame.mouse.get_pos() - Vector2(x + w // 2, y + h // 2)
+        radius, self.angle = direction.as_polar()
+        self.image = pygame.transform.rotate(self.orig, - self.angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+    def shoot(self):
+        mx, my = pygame.mouse.get_pos()
+        bullet = Bullet(self.rect.centerx, self.rect.centery, mx, my, 30)
+        bullets.append(bullet)
+
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, dx, dy, speed, look_radius):
+        super().__init__(enemies_sprites)
+        self.speed = speed
+        self.image = load_image("enemy.png")
+        self.image = pygame.transform.scale(self.image, (50, 50))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.rect = self.image.get_rect(center=(dx, dy))
+        self.rect.x = dx
+        self.rect.y = dy
+        self.orig = self.image
+        self.look_radius = look_radius
+        screen.blit(self.image, self.rect)
+
+    def update(self, player):
+        x1, y1 = self.rect.x, self.rect.y
+        x2, y2 = player.rect.x, player.rect.y
+        self.dir = (x2 - x1, y2 - y1)
+        length = math.hypot(*self.dir)
+        self.dir = (self.dir[0] / length, self.dir[1] / length)
+        angle = math.degrees(math.atan2(self.dir[1], self.dir[0]))
+        self.rotate(player)
+        self.rect.x = self.rect.x + self.dir[0] * self.speed
+        self.rect.y = self.rect.y + self.dir[1] * self.speed
+
+    def rotate(self, player):
+        x1, y1, w1, h1 = self.rect
+        x2, y2, w2, h2 = player.rect
+        direction = Vector2(x2 + w2 // 2, y2 + h2 // 2) - Vector2(x1 + w1 // 2, y1 + h1 // 2)
         radius, angle = direction.as_polar()
         self.image = pygame.transform.rotate(self.orig, - angle)
         self.rect = self.image.get_rect(center=self.rect.center)
 
-    def shoot(self):
-        x, y, w, h = self.rect
-        direction = pygame.mouse.get_pos() - Vector2(x + w // 2, y + h // 2)
-        radius, angle = direction.as_polar()
-        bullet = pygame.sprite.Sprite(all_sprites)
-        bullet.image = load_image('shot.jpg', -1)
-        bullet.rect = bullet.image.get_rect()
-        dx, dy, dw, dh = bullet.rect
-        bullet.image = pygame.transform.scale(bullet.image, (dw // 15, dh // 15))
-        orig = bullet.image
-        bullet.image = pygame.transform.rotate(orig, - angle)
-        screen.blit(bullet.image, bullet.rect)
-
-
 van = pygame.sprite.Sprite(all_sprites)
-van.image = load_image('dust.png')
+van.image = load_image("dust.png")
 van.rect = van.image.get_rect()
+
 arrow = pygame.sprite.Sprite(all_sprites)
 arrow.image = load_image("cross.png")
 arrow.rect = arrow.image.get_rect()
+bullets = []
 
 
 def main():
     running = True
     fps = 60
     clock = pygame.time.Clock()
-    pers = Pers(width // 2, height // 2, 2)
-    MYEVENTTYPE = pygame.USEREVENT + 1
+    pers = Pers(width // 2, height // 2, 3)
+    enemy = Enemy(width // 2 + 300, height // 2, 1, 200)
+    camera = Camera()
     while running:
         pygame.mouse.set_visible(False)
         screen.fill((255, 255, 255))
@@ -99,13 +165,23 @@ def main():
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pers.shoot()
-                pygame.time.set_timer(MYEVENTTYPE, 10)
-                if event.type == MYEVENTTYPE:
-                    pass
-        pers.update(pygame.key.get_pressed())
+        pers.update()
+        enemy.update(pers)
+        for bullet in bullets[:]:
+            bullet.update()
+            if not screen.get_rect().collidepoint(bullet.pos):
+                bullets.remove(bullet)
         if pygame.mouse.get_focused():
             arrow.rect.x, arrow.rect.y = pygame.mouse.get_pos()[0] - 30, pygame.mouse.get_pos()[1] - 30
+        camera.update(pers)
+        for sprite in all_sprites:
+            camera.apply(sprite)
+        for enemy in enemies_sprites:
+            camera.apply(enemy)
         all_sprites.draw(screen)
+        enemies_sprites.draw(screen)
+        for bullet in bullets:
+            bullet.draw(screen)
         pygame.display.flip()
         clock.tick(fps)
 

@@ -3,6 +3,7 @@ import sys
 import random
 import pygame
 import math
+from pygame.display import set_gamma_ramp
 from pygame.math import Vector2
 
 pygame.init()
@@ -154,16 +155,23 @@ class Enemy(pygame.sprite.Sprite):
         screen.blit(self.image, self.rect)
 
     def update(self, player):
+        x1, y1 = self.rect.x, self.rect.y
+        x2, y2 = player.rect.x, player.rect.y
+        self.dir = (x2 - x1, y2 - y1)
+        length = math.hypot(*self.dir)
+        self.dir = (self.dir[0] / length, self.dir[1] / length)
+        angle = math.degrees(math.atan2(self.dir[1], self.dir[0]))
         self.rotate(player)
+        self.rect.x = self.rect.x + self.dir[0] * self.speed
+        self.rect.y = self.rect.y + self.dir[1] * self.speed
 
     def rotate(self, player):
         x1, y1, w1, h1 = self.rect
         x2, y2, w2, h2 = player.rect
         direction = Vector2(x2 + w2 // 2, y2 + h2 // 2) - Vector2(x1 + w1 // 2, y1 + h1 // 2)
-        radius, self.angle = direction.as_polar()
-        if radius <= self.look_radius:
-            self.image = pygame.transform.rotate(self.orig, - self.angle)
-            self.rect = self.image.get_rect(center=self.rect.center)
+        radius, angle = direction.as_polar()
+        self.image = pygame.transform.rotate(self.orig, - angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
 
 
 arrow = pygame.sprite.Sprite(all_sprites)

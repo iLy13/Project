@@ -159,11 +159,13 @@ class Enemy(pygame.sprite.Sprite):
         x2, y2 = player.rect.x, player.rect.y
         self.dir = (x2 - x1, y2 - y1)
         length = math.hypot(*self.dir)
-        self.dir = (self.dir[0] / length, self.dir[1] / length)
-        angle = math.degrees(math.atan2(self.dir[1], self.dir[0]))
-        self.rotate(player)
-        self.rect.x = self.rect.x + self.dir[0] * self.speed
-        self.rect.y = self.rect.y + self.dir[1] * self.speed
+        if length == 0:
+            self.rotate(player)
+        else:
+            self.dir = (self.dir[0] / length, self.dir[1] / length)
+            self.rotate(player)
+            self.rect.x = self.rect.x + self.dir[0] * self.speed
+            self.rect.y = self.rect.y + self.dir[1] * self.speed
 
     def rotate(self, player):
         x1, y1, w1, h1 = self.rect
@@ -217,7 +219,8 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 player.shoot()
         player.update()
-        enemy.update(player)
+        for enemy in enemies:
+            enemy.update(player)
         for bullet in bullets[:]:
             bullet.update()
             if not screen.get_rect().collidepoint(bullet.pos):

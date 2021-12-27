@@ -156,11 +156,11 @@ class Enemy(pygame.sprite.Sprite):
 
     def update(self, player):
         x1, y1 = self.rect.x, self.rect.y
-        x2, y2 = player.rect.x, player.rect.y
+        x2, y2 = player.rect.x - 3, player.rect.y - 6
         self.dir = (x2 - x1, y2 - y1)
         length = math.hypot(*self.dir)
-        if length == 0:
-            self.rotate(player)
+        if length <= 8:
+            pass
         else:
             self.dir = (self.dir[0] / length, self.dir[1] / length)
             self.rotate(player)

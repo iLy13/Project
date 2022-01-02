@@ -3,6 +3,7 @@ import sys
 import random
 import pygame
 import math
+import copy
 from pygame.display import set_gamma_ramp
 from pygame.math import Vector2
 
@@ -97,6 +98,11 @@ class Bullet:
     def update(self):
         self.pos = (self.pos[0] + self.dir[0] * self.speed,
                     self.pos[1] + self.dir[1] * self.speed)
+        self.rect = pygame.Rect(self.pos[0] - 2, self.pos[1] - 2, 4, 4)
+        if pygame.sprite.spritecollideany(self, enemies_sprites):
+            enemies_sprites.remove(pygame.sprite.spritecollideany(self, enemies_sprites))
+        if pygame.sprite.spritecollideany(self, walls_group):
+            del(self)
 
     def draw(self, surf):
         bullet_rect = self.bullet.get_rect(center=self.pos)
@@ -119,12 +125,24 @@ class Player(pygame.sprite.Sprite):
         key = pygame.key.get_pressed()
         if key[pygame.K_s]:
             self.rect.y += self.speed
+            for wall in walls_group:
+                if pygame.sprite.collide_mask(self, wall):
+                    self.rect.y -= self.speed
         elif key[pygame.K_w]:
             self.rect.y -= self.speed
+            for wall in walls_group:
+                if pygame.sprite.collide_mask(self, wall):
+                    self.rect.y += self.speed
         if key[pygame.K_d]:
             self.rect.x += self.speed
+            for wall in walls_group:
+                if pygame.sprite.collide_mask(self, wall):
+                    self.rect.x -= self.speed
         elif key[pygame.K_a]:
             self.rect.x -= self.speed
+            for wall in walls_group:
+                if pygame.sprite.collide_mask(self, wall):
+                    self.rect.x += self.speed
         self.rotate()
 
     def rotate(self):
@@ -144,6 +162,7 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self, dx, dy, speed, look_radius):
         super().__init__(enemies_sprites)
         self.speed = speed
+        self.flag = False
         self.image = load_image("enemy.png")
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.mask = pygame.mask.from_surface(self.image)
@@ -159,13 +178,16 @@ class Enemy(pygame.sprite.Sprite):
         x2, y2 = player.rect.x - 3, player.rect.y - 6
         self.dir = (x2 - x1, y2 - y1)
         length = math.hypot(*self.dir)
-        if length <= 8:
-            pass
-        else:
-            self.dir = (self.dir[0] / length, self.dir[1] / length)
-            self.rotate(player)
-            self.rect.x = self.rect.x + self.dir[0] * self.speed
-            self.rect.y = self.rect.y + self.dir[1] * self.speed
+        if length <= 100:
+            self.flag = True
+        if self.flag:
+            if length <= 8:
+                pass
+            else:
+                self.dir = (self.dir[0] / length, self.dir[1] / length)
+                self.rotate(player)
+                self.rect.x = self.rect.x + self.dir[0] * self.speed
+                self.rect.y = self.rect.y + self.dir[1] * self.speed
 
     def rotate(self, player):
         x1, y1, w1, h1 = self.rect

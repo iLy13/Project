@@ -9,6 +9,8 @@ from pygame.math import Vector2
 
 pygame.init()
 size = width, height = 1000, 1000
+fps = 60
+clock = pygame.time.Clock()
 screen = pygame.display.set_mode(size)
 screen_rect = (0, 0, width, height)
 all_sprites = pygame.sprite.Group()
@@ -36,6 +38,32 @@ def load_image(name, colorkey=None):
     else:
         image = image.convert_alpha()
     return image
+
+
+def start_screen():
+    intro_text = []
+
+    fon = pygame.transform.scale(load_image('fon.jpg'), (width, height))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, True, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                return
+        pygame.display.flip()
+        clock.tick(fps)
 
 
 def load_level(filename):
@@ -102,7 +130,7 @@ class Bullet:
         if pygame.sprite.spritecollideany(self, enemies_sprites):
             enemies_sprites.remove(pygame.sprite.spritecollideany(self, enemies_sprites))
         if pygame.sprite.spritecollideany(self, walls_group):
-            del(self)
+            bullets.remove(self)
 
     def draw(self, surf):
         bullet_rect = self.bullet.get_rect(center=self.pos)
@@ -187,15 +215,24 @@ class Enemy(pygame.sprite.Sprite):
                 self.dir = (self.dir[0] / length, self.dir[1] / length)
                 self.rotate(player)
                 self.rect.x = self.rect.x + self.dir[0] * self.speed
+                for wall in walls_group:
+                    if pygame.sprite.collide_mask(self, wall):
+                        self.rect.x = self.rect.x - self.dir[0] * self.speed
                 self.rect.y = self.rect.y + self.dir[1] * self.speed
+                for wall in walls_group:
+                    if pygame.sprite.collide_mask(self, wall):
+                        self.rect.y = self.rect.y - self.dir[1] * self.speed
 
     def rotate(self, player):
         x1, y1, w1, h1 = self.rect
         x2, y2, w2, h2 = player.rect
         direction = Vector2(x2 + w2 // 2, y2 + h2 // 2) - Vector2(x1 + w1 // 2, y1 + h1 // 2)
-        radius, angle = direction.as_polar()
-        self.image = pygame.transform.rotate(self.orig, - angle)
+        radius, self.angle = direction.as_polar()
+        self.image = pygame.transform.rotate(self.orig, - self.angle)
         self.rect = self.image.get_rect(center=self.rect.center)
+
+    def dead(self):
+        pass
 
 
 arrow = pygame.sprite.Sprite(all_sprites)
@@ -226,8 +263,7 @@ def generate_level(level):
 
 def main():
     running = True
-    fps = 60
-    clock = pygame.time.Clock()
+    start_screen()
     player, level_x, level_y, enemies = generate_level(load_level('level.txt'))
     for i in range(len(enemies)):
         enemy = enemies[i]

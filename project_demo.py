@@ -1,14 +1,13 @@
 import os
 import sys
-import random
 import pygame
 import math
-import copy
-from pygame.display import set_gamma_ramp
 from pygame.math import Vector2
 
 pygame.init()
 pygame.mixer.music.load('data/morgen.mp3')
+pygame.mixer.music.set_volume(0.5)
+vystrel = pygame.mixer.Sound('data/vystrel.wav')
 size = width, height = 1000, 1000
 fps = 60
 clock = pygame.time.Clock()
@@ -69,6 +68,34 @@ def load_level(filename):
         return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
+class AnimatedSprite(pygame.sprite.Sprite):
+    def __init__(self, sheet, columns, rows, x, y):
+        super().__init__(all_sprites)
+        self.frames = []
+        self.count = 0
+        self.cut_sheet(sheet, columns, rows)
+        self.cur_frame = 0
+        self.image = self.frames[self.cur_frame]
+        self.rect = self.rect.move(x, y)
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in range(rows):
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                self.frames.append(sheet.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
+
+    def update(self):
+        if self.count == 59:
+            self.count = 0
+        else:
+            self.count += 1
+        self.cur_frame = self.count // 30
+        self.image = self.frames[self.cur_frame]
+
+
 class Camera:
     def __init__(self):
         self.dx = 0
@@ -118,10 +145,6 @@ class Bullet:
         self.pos = (self.pos[0] + self.dir[0] * self.speed,
                     self.pos[1] + self.dir[1] * self.speed)
         self.rect = pygame.Rect(self.pos[0] - 2, self.pos[1] - 2, 4, 4)
-        if pygame.sprite.spritecollideany(self, enemies_sprites):
-            enemies_sprites.remove(pygame.sprite.spritecollideany(self, enemies_sprites))
-        if pygame.sprite.spritecollideany(self, walls_group):
-            bullets.remove(self)
 
     def draw(self, surf):
         bullet_rect = self.bullet.get_rect(center=self.pos)
@@ -172,6 +195,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.rect.center)
 
     def shoot(self):
+        vystrel.play()
         mx, my = pygame.mouse.get_pos()
         bullet = Bullet(self.rect.centerx, self.rect.centery, mx, my, 30)
         bullets.append(bullet)
@@ -226,8 +250,7 @@ class Enemy(pygame.sprite.Sprite):
         pass
 
 
-arrow = pygame.sprite.Sprite(all_sprites)
-arrow.image = load_image("cross.png")
+arrow = AnimatedSprite(load_image('cross.png'), 2, 1, pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
 arrow.rect = arrow.image.get_rect()
 bullets = []
 
@@ -252,13 +275,10 @@ def generate_level(level):
     return new_player, x, y, enemies
 
 
-def main():
+def main(level):
     running = True
-    level = start_screen()
-    if level == 1:
-        player, level_x, level_y, enemies = generate_level(load_level('level.txt'))
-    elif level == 2:
-        player, level_x, level_y, enemies = generate_level(load_level('level2.txt'))
+    gameover = False
+    player, level_x, level_y, enemies = generate_level(load_level(level))
     pygame.mixer.music.play()
     for i in range(len(enemies)):
         enemy = enemies[i]
@@ -268,7 +288,7 @@ def main():
         screen.fill((0, 0, 0))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                return gameover
             if event.type == pygame.MOUSEBUTTONDOWN:
                 player.shoot()
         player.update()
@@ -276,10 +296,13 @@ def main():
             enemy.update(player)
         for bullet in bullets[:]:
             bullet.update()
-            if not screen.get_rect().collidepoint(bullet.pos):
+            if not screen.get_rect().collidepoint(bullet.pos) or pygame.sprite.spritecollideany(bullet, walls_group):
                 bullets.remove(bullet)
+            if pygame.sprite.spritecollideany(bullet, enemies_sprites):
+                enemies_sprites.remove(pygame.sprite.spritecollideany(bullet, enemies_sprites))
         if pygame.mouse.get_focused():
             arrow.rect.x, arrow.rect.y = pygame.mouse.get_pos()[0] - 30, pygame.mouse.get_pos()[1] - 30
+            arrow.update()
         camera.update(player)
         for sprite in all_sprites:
             camera.apply(sprite)
@@ -292,9 +315,32 @@ def main():
         all_sprites.draw(screen)
         for bullet in bullets:
             bullet.draw(screen)
+        if len(enemies_sprites) == 0:
+            gameover = True
+            return gameover
         pygame.display.flip()
         clock.tick(fps)
 
 
 if __name__ == '__main__':
-    main()
+    game = True
+    level = start_screen()
+    while game:
+        all_sprites = pygame.sprite.Group()
+        tiles_group = pygame.sprite.Group()
+        walls_group = pygame.sprite.Group()
+        enemies_sprites = pygame.sprite.Group()
+        arrow = AnimatedSprite(load_image('cross.png'), 2, 1, 0, 0)
+        if level == 1:
+            gameover = main('level.txt')
+            if gameover:
+                level = 2
+            else:
+                game = False
+        elif level == 2:
+            gameover = main('level2.txt')
+            if gameover:
+                print('Победа!')
+                game = False
+            else:
+                game = False

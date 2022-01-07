@@ -155,7 +155,8 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, dx, dy, speed):
         super().__init__(all_sprites)
         self.speed = speed
-        self.image = load_image("player.png")
+        self.image = load_image("main_ch.png")
+        self.image = pygame.transform.scale(self.image, (40, 40))
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect(center=(dx, dy))
         self.rect.x = dx
@@ -205,8 +206,10 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self, dx, dy, speed, look_radius):
         super().__init__(enemies_sprites)
         self.speed = speed
+        self.angle = 0
+        self.alive = True
         self.flag = False
-        self.image = load_image("enemy.png")
+        self.image = load_image("vrag.png")
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect(center=(dx, dy))
@@ -227,16 +230,17 @@ class Enemy(pygame.sprite.Sprite):
             if length <= 8:
                 pass
             else:
-                self.dir = (self.dir[0] / length, self.dir[1] / length)
-                self.rotate(player)
-                self.rect.x = self.rect.x + self.dir[0] * self.speed
-                for wall in walls_group:
-                    if pygame.sprite.collide_mask(self, wall):
-                        self.rect.x = self.rect.x - self.dir[0] * self.speed
-                self.rect.y = self.rect.y + self.dir[1] * self.speed
-                for wall in walls_group:
-                    if pygame.sprite.collide_mask(self, wall):
-                        self.rect.y = self.rect.y - self.dir[1] * self.speed
+                if self.alive:
+                    self.dir = (self.dir[0] / length, self.dir[1] / length)
+                    self.rotate(player)
+                    self.rect.x = self.rect.x + self.dir[0] * self.speed
+                    for wall in walls_group:
+                        if pygame.sprite.collide_mask(self, wall):
+                            self.rect.x = self.rect.x - self.dir[0] * self.speed
+                    self.rect.y = self.rect.y + self.dir[1] * self.speed
+                    for wall in walls_group:
+                        if pygame.sprite.collide_mask(self, wall):
+                            self.rect.y = self.rect.y - self.dir[1] * self.speed
 
     def rotate(self, player):
         x1, y1, w1, h1 = self.rect
@@ -247,7 +251,9 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.rect.center)
 
     def dead(self):
-        pass
+        self.image = pygame.transform.scale(load_image('dead_vrag.png'), (50, 50))
+        self.image = pygame.transform.rotate(self.image, - self.angle)
+        self.alive = False
 
 
 arrow = AnimatedSprite(load_image('cross.png'), 2, 1, pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
@@ -298,8 +304,10 @@ def main(level):
             bullet.update()
             if not screen.get_rect().collidepoint(bullet.pos) or pygame.sprite.spritecollideany(bullet, walls_group):
                 bullets.remove(bullet)
-            if pygame.sprite.spritecollideany(bullet, enemies_sprites):
-                enemies_sprites.remove(pygame.sprite.spritecollideany(bullet, enemies_sprites))
+            for enemy in enemies:
+                if bullet.rect.colliderect(enemy.rect):
+                    enemy.dead()
+
         if pygame.mouse.get_focused():
             arrow.rect.x, arrow.rect.y = pygame.mouse.get_pos()[0] - 30, pygame.mouse.get_pos()[1] - 30
             arrow.update()

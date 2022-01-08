@@ -8,6 +8,7 @@ pygame.init()
 pygame.mixer.music.load('data/morgen.mp3')
 pygame.mixer.music.set_volume(0.5)
 vystrel = pygame.mixer.Sound('data/vystrel.wav')
+pygame.mixer.Sound.set_volume(vystrel, 0.5)
 size = width, height = 1000, 1000
 fps = 60
 clock = pygame.time.Clock()
@@ -41,16 +42,18 @@ def load_image(name, colorkey=None):
 
 
 def start_screen():
-    fon = pygame.transform.scale(load_image('fon.jpg'), (width, height))
+    fon = pygame.transform.scale(load_image('fon.png'), (width, height))
     screen.blit(fon, (0, 0))
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_1:
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 return 1
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_2:
-                return 2
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
+                pass
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                return 'off'
 
         pygame.display.flip()
         clock.tick(fps)
@@ -65,7 +68,40 @@ def dead_screen():
                 terminate()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 fon.fill((0, 0, 0, 0))
-                return 0
+                return 'restart'
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+def pause_screen():
+    fon = load_image('pause_screen.png')
+    screen.blit(fon, (0, 0))
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                fon.fill((0, 0, 0, 0))
+                return 'restart'
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                fon.fill((0, 0, 0, 0))
+                return 'continue'
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
+                return 'start_screen'
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+def continue_screen():
+    fon = load_image('continue_screen.png', -1)
+    screen.blit(fon, (0, 0))
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_c:
+                fon.fill((0, 0, 0, 0))
+                return 1
         pygame.display.flip()
         clock.tick(fps)
 
@@ -126,7 +162,7 @@ class Camera:
 
 tile_width = tile_height = 50
 tile_images = {
-    'wall': pygame.transform.scale(load_image('bricks.jpg'), (50, 50)),
+    'wall': pygame.transform.scale(load_image('neon_wall.jpg'), (50, 50)),
     'empty': pygame.transform.scale(load_image('floor.jpg'), (50, 50))
               }
 
@@ -313,11 +349,12 @@ def generate_level(level):
     return new_player, x, y, enemies
 
 
-def main(level):
+def main(level, music):
     running = True
-    gameover = False
+    musica = music
     player, level_x, level_y, enemies = generate_level(load_level(level))
-    pygame.mixer.music.play()
+    if musica:
+        pygame.mixer.music.play()
     for i in range(len(enemies)):
         enemy = enemies[i]
     camera = Camera()
@@ -329,6 +366,17 @@ def main(level):
                 return -1
             if event.type == pygame.MOUSEBUTTONDOWN and player.alive:
                 player.shoot()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_m:
+                if musica:
+                    pygame.mixer.music.pause()
+                    musica = False
+                else:
+                    pygame.mixer.music.unpause()
+                    musica = True
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                gameover = pause_screen()
+                if gameover != 'continue':
+                    return gameover, musica
         player.update()
         for enemy in enemies:
             enemy.update(player)
@@ -357,40 +405,47 @@ def main(level):
         for bullet in bullets:
             bullet.draw(screen)
         if all(not e.alive for e in enemies):
-            gameover = 1
-            return gameover
+            gameover = continue_screen()
+            return gameover, musica
         if not player.alive:
             gameover = dead_screen()
-            return gameover
+            return gameover, musica
 
         pygame.display.flip()
         clock.tick(fps)
 
 
 if __name__ == '__main__':
-    game = True
-    level = start_screen()
-    while game:
-        all_sprites = pygame.sprite.Group()
-        tiles_group = pygame.sprite.Group()
-        walls_group = pygame.sprite.Group()
-        enemies_sprites = pygame.sprite.Group()
-        bullets = []
-        arrow = AnimatedSprite(load_image('cross.png'), 2, 1, 0, 0)
-        if level == 1:
-            gameover = main('level.txt')
-            if gameover == 1:
-                level = 2
-            elif gameover == -1:
+    running = True
+    while running:
+        game = True
+        music = True
+        level = start_screen()
+        while game:
+            all_sprites = pygame.sprite.Group()
+            tiles_group = pygame.sprite.Group()
+            walls_group = pygame.sprite.Group()
+            enemies_sprites = pygame.sprite.Group()
+            bullets = []
+            arrow = AnimatedSprite(load_image('cross.png'), 2, 1, 0, 0)
+            if level == 1:
+                gameover, music = main('level.txt', music)
+                if gameover == 1:
+                    level = 2
+                elif gameover == 'start_screen':
+                    game = False
+                elif gameover == 'restart':
+                    continue
+            elif level == 2:
+                gameover, music = main('level2.txt', music)
+                if gameover == 1:
+                    print('Победа!')
+                    game = False
+                elif gameover == 'start_screen':
+                    game = False
+                elif gameover == 'restart':
+                    continue
+            elif level == 'off':
                 game = False
-            elif gameover == 0:
-                continue
-        elif level == 2:
-            gameover = main('level2.txt')
-            if gameover == 1:
-                print('Победа!')
-                game = False
-            elif gameover == -1:
-                game = False
-            elif gameover == 0:
-                continue
+                running = False
+

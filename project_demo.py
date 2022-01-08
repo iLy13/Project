@@ -56,6 +56,20 @@ def start_screen():
         clock.tick(fps)
 
 
+def dead_screen():
+    fon = load_image('dead_screen.png', -1)
+    screen.blit(fon, (0, 0))
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                fon.fill((0, 0, 0, 0))
+                return 0
+        pygame.display.flip()
+        clock.tick(fps)
+
+
 def load_level(filename):
     filename = "data/" + filename
     if not os.path.isfile(filename):
@@ -126,9 +140,10 @@ class Tile(pygame.sprite.Sprite):
 
 
 class Bullet:
-    def __init__(self, x, y, mx, my, speed):
+    def __init__(self, x, y, mx, my, speed, sender):
         self.pos = (x, y)
         self.speed = speed
+        self.sender = sender
         self.dir = (mx - x, my - y)
         length = math.hypot(*self.dir)
         if length == 0.0:
@@ -155,6 +170,7 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, dx, dy, speed):
         super().__init__(all_sprites)
         self.speed = speed
+        self.alive = True
         self.image = load_image("main_ch.png")
         self.image = pygame.transform.scale(self.image, (40, 40))
         self.mask = pygame.mask.from_surface(self.image)
@@ -166,27 +182,28 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         key = pygame.key.get_pressed()
-        if key[pygame.K_s]:
-            self.rect.y += self.speed
-            for wall in walls_group:
-                if pygame.sprite.collide_mask(self, wall):
-                    self.rect.y -= self.speed
-        elif key[pygame.K_w]:
-            self.rect.y -= self.speed
-            for wall in walls_group:
-                if pygame.sprite.collide_mask(self, wall):
-                    self.rect.y += self.speed
-        if key[pygame.K_d]:
-            self.rect.x += self.speed
-            for wall in walls_group:
-                if pygame.sprite.collide_mask(self, wall):
-                    self.rect.x -= self.speed
-        elif key[pygame.K_a]:
-            self.rect.x -= self.speed
-            for wall in walls_group:
-                if pygame.sprite.collide_mask(self, wall):
-                    self.rect.x += self.speed
-        self.rotate()
+        if self.alive:
+            if key[pygame.K_s]:
+                self.rect.y += self.speed
+                for wall in walls_group:
+                    if pygame.sprite.collide_mask(self, wall):
+                        self.rect.y -= self.speed
+            elif key[pygame.K_w]:
+                self.rect.y -= self.speed
+                for wall in walls_group:
+                    if pygame.sprite.collide_mask(self, wall):
+                        self.rect.y += self.speed
+            if key[pygame.K_d]:
+                self.rect.x += self.speed
+                for wall in walls_group:
+                    if pygame.sprite.collide_mask(self, wall):
+                        self.rect.x -= self.speed
+            elif key[pygame.K_a]:
+                self.rect.x -= self.speed
+                for wall in walls_group:
+                    if pygame.sprite.collide_mask(self, wall):
+                        self.rect.x += self.speed
+            self.rotate()
 
     def rotate(self):
         x, y, w, h = self.rect
@@ -198,14 +215,20 @@ class Player(pygame.sprite.Sprite):
     def shoot(self):
         vystrel.play()
         mx, my = pygame.mouse.get_pos()
-        bullet = Bullet(self.rect.centerx, self.rect.centery, mx, my, 30)
+        bullet = Bullet(self.rect.centerx, self.rect.centery, mx, my, 30, 'player')
         bullets.append(bullet)
+
+    def dead(self):
+        self.image = pygame.transform.scale(load_image('dead_main_ch.png'), (50, 50))
+        self.image = pygame.transform.rotate(self.image, - self.angle)
+        self.alive = False
 
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, dx, dy, speed, look_radius):
         super().__init__(enemies_sprites)
         self.speed = speed
+        self.count = 99
         self.angle = 0
         self.alive = True
         self.flag = False
@@ -224,23 +247,27 @@ class Enemy(pygame.sprite.Sprite):
         x2, y2 = player.rect.x - 3, player.rect.y - 6
         self.dir = (x2 - x1, y2 - y1)
         length = math.hypot(*self.dir)
-        if length <= 100:
+        if length <= 200:
             self.flag = True
         if self.flag:
-            if length <= 8:
-                pass
+            if length <= 80:
+                if self.count == 99 and self.alive and player.alive:
+                    self.shoot(player)
+                    self.count = 0
+                else:
+                    self.count += 1
             else:
-                if self.alive:
+                if self.alive and player.alive:
                     self.dir = (self.dir[0] / length, self.dir[1] / length)
                     self.rotate(player)
                     self.rect.x = self.rect.x + self.dir[0] * self.speed
                     for wall in walls_group:
                         if pygame.sprite.collide_mask(self, wall):
-                            self.rect.x = self.rect.x - self.dir[0] * self.speed
+                            self.rect.x = self.rect.x + self.dir[0] * - self.speed
                     self.rect.y = self.rect.y + self.dir[1] * self.speed
                     for wall in walls_group:
                         if pygame.sprite.collide_mask(self, wall):
-                            self.rect.y = self.rect.y - self.dir[1] * self.speed
+                            self.rect.y = self.rect.y + self.dir[1] * - self.speed
 
     def rotate(self, player):
         x1, y1, w1, h1 = self.rect
@@ -250,6 +277,12 @@ class Enemy(pygame.sprite.Sprite):
         self.image = pygame.transform.rotate(self.orig, - self.angle)
         self.rect = self.image.get_rect(center=self.rect.center)
 
+    def shoot(self, player):
+        vystrel.play()
+        x2, y2, w2, h2 = player.rect
+        bullet = Bullet(self.rect.centerx, self.rect.centery, x2 + w2 // 2, y2 + h2 // 2, 30, 'enemy')
+        bullets.append(bullet)
+
     def dead(self):
         self.image = pygame.transform.scale(load_image('dead_vrag.png'), (50, 50))
         self.image = pygame.transform.rotate(self.image, - self.angle)
@@ -258,7 +291,6 @@ class Enemy(pygame.sprite.Sprite):
 
 arrow = AnimatedSprite(load_image('cross.png'), 2, 1, pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])
 arrow.rect = arrow.image.get_rect()
-bullets = []
 
 
 def generate_level(level):
@@ -294,8 +326,8 @@ def main(level):
         screen.fill((0, 0, 0))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return gameover
-            if event.type == pygame.MOUSEBUTTONDOWN:
+                return -1
+            if event.type == pygame.MOUSEBUTTONDOWN and player.alive:
                 player.shoot()
         player.update()
         for enemy in enemies:
@@ -305,9 +337,10 @@ def main(level):
             if not screen.get_rect().collidepoint(bullet.pos) or pygame.sprite.spritecollideany(bullet, walls_group):
                 bullets.remove(bullet)
             for enemy in enemies:
-                if bullet.rect.colliderect(enemy.rect):
+                if bullet.rect.colliderect(enemy.rect) and bullet.sender == 'player':
                     enemy.dead()
-
+            if bullet.rect.colliderect(player.rect) and bullet.sender == 'enemy':
+                player.dead()
         if pygame.mouse.get_focused():
             arrow.rect.x, arrow.rect.y = pygame.mouse.get_pos()[0] - 30, pygame.mouse.get_pos()[1] - 30
             arrow.update()
@@ -323,9 +356,13 @@ def main(level):
         all_sprites.draw(screen)
         for bullet in bullets:
             bullet.draw(screen)
-        if len(enemies_sprites) == 0:
-            gameover = True
+        if all(not e.alive for e in enemies):
+            gameover = 1
             return gameover
+        if not player.alive:
+            gameover = dead_screen()
+            return gameover
+
         pygame.display.flip()
         clock.tick(fps)
 
@@ -338,17 +375,22 @@ if __name__ == '__main__':
         tiles_group = pygame.sprite.Group()
         walls_group = pygame.sprite.Group()
         enemies_sprites = pygame.sprite.Group()
+        bullets = []
         arrow = AnimatedSprite(load_image('cross.png'), 2, 1, 0, 0)
         if level == 1:
             gameover = main('level.txt')
-            if gameover:
+            if gameover == 1:
                 level = 2
-            else:
+            elif gameover == -1:
                 game = False
+            elif gameover == 0:
+                continue
         elif level == 2:
             gameover = main('level2.txt')
-            if gameover:
+            if gameover == 1:
                 print('Победа!')
                 game = False
-            else:
+            elif gameover == -1:
                 game = False
+            elif gameover == 0:
+                continue

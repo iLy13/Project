@@ -2,6 +2,7 @@ import os
 import sys
 import pygame
 import math
+import random
 from pygame.math import Vector2
 
 pygame.init()
@@ -19,6 +20,7 @@ screen_rect = (0, 0, width, height)
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 walls_group = pygame.sprite.Group()
+particles = pygame.sprite.Group()
 enemies_sprites = pygame.sprite.Group()
 
 
@@ -51,7 +53,7 @@ def start_screen():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                return 1
+                return 2
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
                 transit = credits()
                 return transit
@@ -122,6 +124,28 @@ def continue_screen():
         clock.tick(fps)
 
 
+def final_screen():
+    fon = load_image('final_screen.png', -1)
+    screen.blit(fon, (0, 0))
+    count = 0
+    while True:
+        if count == 99:
+            create_particles((random.randint(50, 950), random.randint(1, 600)))
+            count = 0
+        count += 1
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                fon.fill((0, 0, 0, 0))
+                return 'start_screen'
+        particles.update()
+        screen.blit(fon, (0, 0))
+        particles.draw(screen)
+        pygame.display.flip()
+        clock.tick(50)
+
+
 def load_level(filename):
     filename = "data/" + filename
     if not os.path.isfile(filename):
@@ -132,6 +156,34 @@ def load_level(filename):
             level_map = [line.strip() for line in mapFile]
         max_width = max(map(len, level_map))
         return list(map(lambda x: x.ljust(max_width, '.'), level_map))
+
+
+class Particle(pygame.sprite.Sprite):
+    fire = [load_image("star.png")]
+    for scale in (5, 10, 20):
+        fire.append(pygame.transform.scale(fire[0], (scale, scale)))
+
+    def __init__(self, pos, dx, dy):
+        super().__init__(particles)
+        self.image = random.choice(self.fire)
+        self.rect = self.image.get_rect()
+        self.velocity = [dx, dy]
+        self.rect.x, self.rect.y = pos
+        self.gravity = 1
+
+    def update(self):
+        self.velocity[1] += self.gravity
+        self.rect.x += self.velocity[0]
+        self.rect.y += self.velocity[1]
+        if not self.rect.colliderect(screen_rect):
+            self.kill()
+
+
+def create_particles(position):
+    particle_count = 10
+    numbers = range(-7, 8)
+    for _ in range(particle_count):
+        Particle(position, random.choice(numbers), random.choice(numbers))
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -457,9 +509,12 @@ if __name__ == '__main__':
             elif level == 2:
                 gameover, music = main('level2.txt', music=True)
                 if gameover == 1:
-                    print('Победа!')
+                    pygame.mixer.music.stop()
+                    pygame.mixer.music.load('data/twin_peaks.mp3')
+                    pygame.mixer.music.play()
+                    gameover = final_screen()
+                    pygame.mixer.music.stop()
                     game = False
-                    running = False
                 elif gameover == 'start_screen':
                     game = False
                     pygame.mixer.music.stop()
@@ -470,4 +525,6 @@ if __name__ == '__main__':
                 running = False
             elif level == 'credits':
                 game = False
+    pygame.quit()
+    sys.exit()
 

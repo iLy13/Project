@@ -5,10 +5,12 @@ import math
 from pygame.math import Vector2
 
 pygame.init()
-pygame.mixer.music.load('data/morgen.mp3')
-pygame.mixer.music.set_volume(0.5)
+pygame.mixer.music.load('data/Grimes - Kill V Maim.mp3')
+pygame.mixer.music.set_volume(0.4)
 vystrel = pygame.mixer.Sound('data/vystrel.wav')
+death = pygame.mixer.Sound('data/death.wav')
 pygame.mixer.Sound.set_volume(vystrel, 0.5)
+pygame.mixer.Sound.set_volume(death, 0.7)
 size = width, height = 1000, 1000
 fps = 60
 clock = pygame.time.Clock()
@@ -51,10 +53,24 @@ def start_screen():
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 return 1
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
-                pass
+                transit = credits()
+                return transit
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 return 'off'
 
+        pygame.display.flip()
+        clock.tick(fps)
+
+
+def credits():
+    fon = pygame.transform.scale(load_image('credits.png'), (width, height))
+    screen.blit(fon, (0, 0))
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN and (event.key == pygame.K_ESCAPE or event.key == pygame.K_TAB):
+                return 'credits'
         pygame.display.flip()
         clock.tick(fps)
 
@@ -162,7 +178,7 @@ class Camera:
 
 tile_width = tile_height = 50
 tile_images = {
-    'wall': pygame.transform.scale(load_image('neon_wall.jpg'), (50, 50)),
+    'wall': pygame.transform.scale(load_image('bricks2.png'), (50, 50)),
     'empty': pygame.transform.scale(load_image('floor.jpg'), (50, 50))
               }
 
@@ -376,7 +392,7 @@ def main(level, music):
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 gameover = pause_screen()
                 if gameover != 'continue':
-                    return gameover, musica
+                    return gameover, False
         player.update()
         for enemy in enemies:
             enemy.update(player)
@@ -385,10 +401,12 @@ def main(level, music):
             if not screen.get_rect().collidepoint(bullet.pos) or pygame.sprite.spritecollideany(bullet, walls_group):
                 bullets.remove(bullet)
             for enemy in enemies:
-                if bullet.rect.colliderect(enemy.rect) and bullet.sender == 'player':
+                if bullet.rect.colliderect(enemy.rect) and bullet.sender == 'player' and enemy.alive:
                     enemy.dead()
+                    death.play()
             if bullet.rect.colliderect(player.rect) and bullet.sender == 'enemy':
                 player.dead()
+                death.play()
         if pygame.mouse.get_focused():
             arrow.rect.x, arrow.rect.y = pygame.mouse.get_pos()[0] - 30, pygame.mouse.get_pos()[1] - 30
             arrow.update()
@@ -419,7 +437,6 @@ if __name__ == '__main__':
     running = True
     while running:
         game = True
-        music = True
         level = start_screen()
         while game:
             all_sprites = pygame.sprite.Group()
@@ -429,23 +446,28 @@ if __name__ == '__main__':
             bullets = []
             arrow = AnimatedSprite(load_image('cross.png'), 2, 1, 0, 0)
             if level == 1:
-                gameover, music = main('level.txt', music)
+                gameover, music = main('level.txt', music=True)
                 if gameover == 1:
                     level = 2
                 elif gameover == 'start_screen':
                     game = False
+                    pygame.mixer.music.stop()
                 elif gameover == 'restart':
                     continue
             elif level == 2:
-                gameover, music = main('level2.txt', music)
+                gameover, music = main('level2.txt', music=True)
                 if gameover == 1:
                     print('Победа!')
                     game = False
+                    running = False
                 elif gameover == 'start_screen':
                     game = False
+                    pygame.mixer.music.stop()
                 elif gameover == 'restart':
                     continue
             elif level == 'off':
                 game = False
                 running = False
+            elif level == 'credits':
+                game = False
 

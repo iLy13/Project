@@ -53,7 +53,7 @@ def start_screen():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                return 2
+                return 1
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
                 transit = credits()
                 return transit

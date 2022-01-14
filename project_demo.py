@@ -45,6 +45,18 @@ def load_image(name, colorkey=None):
     return image
 
 
+def load_level(filename):
+    filename = "data/" + filename
+    if not os.path.isfile(filename):
+        print(f"Файл с изображением '{filename}' не найден")
+        terminate()
+    else:
+        with open(filename, 'r') as mapFile:
+            level_map = [line.strip() for line in mapFile]
+        max_width = max(map(len, level_map))
+        return list(map(lambda x: x.ljust(max_width, '.'), level_map))
+
+
 def start_screen():
     fon = pygame.transform.scale(load_image('fon.png'), (width, height))
     screen.blit(fon, (0, 0))
@@ -144,18 +156,6 @@ def final_screen():
         particles.draw(screen)
         pygame.display.flip()
         clock.tick(50)
-
-
-def load_level(filename):
-    filename = "data/" + filename
-    if not os.path.isfile(filename):
-        print(f"Файл с изображением '{filename}' не найден")
-        terminate()
-    else:
-        with open(filename, 'r') as mapFile:
-            level_map = [line.strip() for line in mapFile]
-        max_width = max(map(len, level_map))
-        return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
 class Particle(pygame.sprite.Sprite):
@@ -463,20 +463,27 @@ def main(level, music):
             arrow.rect.x, arrow.rect.y = pygame.mouse.get_pos()[0] - 30, pygame.mouse.get_pos()[1] - 30
             arrow.update()
         camera.update(player)
+
         for sprite in all_sprites:
             camera.apply(sprite)
+
         for sprite in tiles_group:
             camera.apply(sprite)
+
         for enemy in enemies_sprites:
             camera.apply(enemy)
+
         tiles_group.draw(screen)
         enemies_sprites.draw(screen)
         all_sprites.draw(screen)
+
         for bullet in bullets:
             bullet.draw(screen)
+
         if all(not e.alive for e in enemies):
             gameover = continue_screen()
             return gameover, musica
+
         if not player.alive:
             gameover = dead_screen()
             return gameover, musica

@@ -438,6 +438,7 @@ def generate_level(level):
 def main(level, music):
     running = True
     musica = music
+    level_score = 0
     player, level_x, level_y, enemies = generate_level(load_level(level))
     if musica:
         pygame.mixer.music.play()
@@ -462,7 +463,7 @@ def main(level, music):
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 gameover = pause_screen()
                 if gameover != 'continue':
-                    return gameover, False
+                    return gameover, False, level_score
         player.update()
         for enemy in enemies:
             enemy.update(player)
@@ -473,6 +474,7 @@ def main(level, music):
             for enemy in enemies:
                 if bullet.rect.colliderect(enemy.rect) and bullet.sender == 'player' and enemy.alive:
                     enemy.dead()
+                    level_score += 200
                     death.play()
             if bullet.rect.colliderect(player.rect) and bullet.sender == 'enemy':
                 player.dead()
@@ -500,11 +502,11 @@ def main(level, music):
 
         if all(not e.alive for e in enemies):
             gameover = continue_screen()
-            return gameover, musica
+            return gameover, musica, level_score
 
         if not player.alive:
             gameover = dead_screen()
-            return gameover, musica
+            return gameover, musica, level_score
 
         pygame.display.flip()
         clock.tick(fps)
@@ -512,8 +514,9 @@ def main(level, music):
 
 if __name__ == '__main__':
     running = True
-    nickname = "Неизвестный игрок"
     while running:
+        nickname = ''
+        score = 0
         game = True
         level = start_screen()
         while game:
@@ -524,23 +527,29 @@ if __name__ == '__main__':
             bullets = []
             arrow = AnimatedSprite(load_image('cross.png'), 2, 1, 0, 0)
             if level == 1:
-                gameover, music = main('level.txt', music=True)
+                gameover, music, level_score = main('level.txt', music=True)
                 if gameover == 1:
+                    score += level_score
+                    score += 3000
                     level = 2
                 elif gameover == 'start_screen':
                     game = False
                     pygame.mixer.music.stop()
                 elif gameover == 'restart':
+                    score -= 1000
                     continue
             elif level == 2:
-                gameover, music = main('level2.txt', music=True)
+                gameover, music, level_score = main('level2.txt', music=True)
                 if gameover == 1:
+                    score += level_score
+                    score += 3000
                     pygame.mixer.music.stop()
                     pygame.mixer.music.load('data/twin_peaks.mp3')
                     pygame.mixer.music.play()
                     gameover = final_screen()
                     pygame.mixer.music.stop()
                     nickname = vvod_nika()
+                    print(nickname, score)
                     game = False
                 elif gameover == 'start_screen':
                     game = False
@@ -548,7 +557,6 @@ if __name__ == '__main__':
                 elif gameover == 'restart':
                     continue
             elif level == 'off':
-                print(nickname)
                 game = False
                 running = False
             elif level == 'credits':

@@ -1,5 +1,3 @@
-from pydoc import text
-import re
 import pygame as pg
 
 class Pole_vvoda():

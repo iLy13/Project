@@ -1,6 +1,5 @@
-from pydoc import text
-import re
 import pygame as pg
+
 
 class Pole_vvoda():
     def __init__(self, x, y, width, height, limit) -> None:
@@ -12,7 +11,6 @@ class Pole_vvoda():
         self.limit = limit
 
     def draw(self, screen):
-        
         txt_surface = self.font.render(self.text, True, self.color)
         screen.blit(txt_surface, (self.input_box.x + 5, self.input_box.y + 5))
         pg.draw.rect(screen, self.color, self.input_box, 2)
@@ -25,10 +23,7 @@ class Pole_vvoda():
                 self.change_act(False)
         if event.type == pg.KEYDOWN:
             if self.get_act():
-                if event.key == pg.K_RETURN:
-                    print(self.get_text())
-                    self.change_text('')
-                elif event.key == pg.K_BACKSPACE:
+                if event.key == pg.K_BACKSPACE:
                     self.change_text(self.get_text()[:-1])
                 else:
                     self.change_text(self.get_text() + event.unicode)
@@ -50,23 +45,16 @@ class Pole_vvoda():
         return self.text
 
 
-pg.init()
-screen = pg.display.set_mode((640, 480))
-clock = pg.time.Clock()
-text_input = Pole_vvoda(100, 100, 300, 30, 10)
-done = False
-
-while done == False:
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            done = True
-        text_input.update(event)
-    screen.fill((30, 30, 30))
-    text_input.draw(screen)
-    pg.display.flip()
-    clock.tick(30)
-
-
 if __name__ == '__main__':
     pg.init()
-    pg.quit()
+    display = pg.display.set_mode((500, 500))
+    clock = pg.time.Clock()
+    text_input = Pole_vvoda(100, 100, 300, 30, 20)
+    done = False
+    while not done:
+        for event in pg.event.get():
+            text_input.update(event)
+        display.fill((30, 30, 30))
+        text_input.draw(display)
+        pg.display.flip()
+        clock.tick(30)

@@ -3,6 +3,7 @@ import sys
 import pygame
 import math
 import random
+from vvod import Pole_vvoda
 from pygame.math import Vector2
 
 pygame.init()
@@ -58,12 +59,13 @@ def load_level(filename):
 
 
 def start_screen():
+    screen = pygame.display.set_mode((1000, 1000))
     fon = pygame.transform.scale(load_image('fon.png'), (width, height))
     screen.blit(fon, (0, 0))
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                terminate()
+                return 'off'
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 return 1
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
@@ -156,6 +158,22 @@ def final_screen():
         particles.draw(screen)
         pygame.display.flip()
         clock.tick(50)
+
+
+def vvod_nika():
+    screen = pygame.display.set_mode((500, 500))
+    pygame.mouse.set_visible(True)
+    clock = pygame.time.Clock()
+    text_input = Pole_vvoda(100, 100, 300, 30, 20)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                return text_input.get_text()
+            text_input.update(event)
+        screen.fill((30, 30, 30))
+        text_input.draw(screen)
+        pygame.display.flip()
+        clock.tick(30)
 
 
 class Particle(pygame.sprite.Sprite):
@@ -494,6 +512,7 @@ def main(level, music):
 
 if __name__ == '__main__':
     running = True
+    nickname = "Неизвестный игрок"
     while running:
         game = True
         level = start_screen()
@@ -521,6 +540,7 @@ if __name__ == '__main__':
                     pygame.mixer.music.play()
                     gameover = final_screen()
                     pygame.mixer.music.stop()
+                    nickname = vvod_nika()
                     game = False
                 elif gameover == 'start_screen':
                     game = False
@@ -528,6 +548,7 @@ if __name__ == '__main__':
                 elif gameover == 'restart':
                     continue
             elif level == 'off':
+                print(nickname)
                 game = False
                 running = False
             elif level == 'credits':

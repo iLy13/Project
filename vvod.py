@@ -45,16 +45,16 @@ class Pole_vvoda():
         return self.text
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pg.init()
-    display = pg.display.set_mode((500, 500))
+    screen = pg.display.set_mode((640, 480))
     clock = pg.time.Clock()
-    text_input = Pole_vvoda(100, 100, 300, 30, 20)
+    text_input = Pole_vvoda(100, 100, 300, 30, 10)
     done = False
     while not done:
         for event in pg.event.get():
             text_input.update(event)
-        display.fill((30, 30, 30))
-        text_input.draw(display)
+        screen.fill((30, 30, 30))
+        text_input.draw(screen)
         pg.display.flip()
         clock.tick(30)

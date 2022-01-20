@@ -9,8 +9,6 @@ from vvod import Pole_vvoda
 from pygame.math import Vector2
 
 pygame.init()
-pygame.mixer.music.load('data/Grimes - Kill V Maim.mp3')
-pygame.mixer.music.set_volume(0.4)
 vystrel = pygame.mixer.Sound('data/vystrel.wav')
 death = pygame.mixer.Sound('data/death.wav')
 pygame.mixer.Sound.set_volume(vystrel, 0.5)
@@ -62,12 +60,15 @@ def load_level(filename):
         max_width = max(map(len, level_map))
         return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
+
 def make_new_score(nick, score):
     cur.execute(f"""INSERT INTO ranking VALUES ('{nick}', {score})""")
     con.commit()
 
+
 def get_top():
     return cur.execute("""SELECT score, nick FROM ranking ORDER BY score DESC""").fetchall()
+
 
 def start_screen():
     screen = pygame.display.set_mode((1000, 1000))
@@ -471,6 +472,7 @@ def generate_level(level):
                 enemies.append(new_enemy)
     return new_player, x, y, enemies
 
+
 def main(level, music):
     running = True
     musica = music
@@ -562,6 +564,8 @@ if __name__ == '__main__':
             enemies_sprites = pygame.sprite.Group()
             bullets = []
             arrow = AnimatedSprite(load_image('cross.png'), 2, 1, 0, 0)
+            pygame.mixer.music.load('data/Grimes - Kill V Maim.mp3')
+            pygame.mixer.music.set_volume(0.4)
             if level == 1:
                 gameover, music, level_score = main('level.txt', music=True)
                 if gameover == 1:
@@ -592,6 +596,7 @@ if __name__ == '__main__':
                     game = False
                     pygame.mixer.music.stop()
                 elif gameover == 'restart':
+                    score -= 1000
                     continue
             elif level == 'off':
                 game = False

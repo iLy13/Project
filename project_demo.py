@@ -1,12 +1,16 @@
 import os
+from select import select
 import sys
 import pygame
 import math
 import random
+import sqlite3
 from vvod import Pole_vvoda
 from pygame.math import Vector2
 
 pygame.init()
+pygame.mixer.music.load('data/Grimes - Kill V Maim.mp3')
+pygame.mixer.music.set_volume(0.4)
 vystrel = pygame.mixer.Sound('data/vystrel.wav')
 death = pygame.mixer.Sound('data/death.wav')
 pygame.mixer.Sound.set_volume(vystrel, 0.5)
@@ -21,6 +25,9 @@ tiles_group = pygame.sprite.Group()
 walls_group = pygame.sprite.Group()
 particles = pygame.sprite.Group()
 enemies_sprites = pygame.sprite.Group()
+
+con = sqlite3.connect("game.db")
+cur = con.cursor()
 
 
 def terminate():
@@ -55,6 +62,12 @@ def load_level(filename):
         max_width = max(map(len, level_map))
         return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
+def make_new_score(nick, score):
+    cur.execute(f"""INSERT INTO ranking VALUES ('{nick}', {score})""")
+    con.commit()
+
+def get_top():
+    return cur.execute("""SELECT score, nick FROM ranking ORDER BY score DESC""").fetchall()
 
 def start_screen():
     screen = pygame.display.set_mode((1000, 1000))
@@ -71,7 +84,8 @@ def start_screen():
                 return transit
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 return 'off'
-
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
+                top_screen()
         pygame.display.flip()
         clock.tick(fps)
 
@@ -154,6 +168,30 @@ def final_screen():
         particles.update()
         screen.blit(fon, (0, 0))
         particles.draw(screen)
+        pygame.display.flip()
+        clock.tick(50)
+
+def top_screen():
+    pygame.font.init()
+    fon = load_image('top.jpg', -1)
+    myfont = pygame.font.SysFont('Comic Sans MS', 30)
+    text = []
+    for mest, strok in enumerate(get_top()):
+        text.append(f"{mest + 1}) {strok[0]} {strok[1]}")
+    screen.blit(fon, (0, 0))
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                fon.fill((0, 0, 0, 0))
+                return 'start_screen'
+        screen.blit(fon, (0, 0))
+        h = 0
+        for st in text:
+            h += 40
+            rend = myfont.render(st, False, pygame.Color("RED"))
+            screen.blit(rend, (screen.get_width() // 2 - (rend.get_width() // 2), h))
         pygame.display.flip()
         clock.tick(50)
 
@@ -360,6 +398,7 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.y = dy
         self.orig = self.image
         self.look_radius = look_radius
+        self.lalst_pos = [dx, dy]
         screen.blit(self.image, self.rect)
 
     def update(self, player):
@@ -431,7 +470,6 @@ def generate_level(level):
                 new_enemy = Enemy(x * tile_width, y * tile_height, 3, 100)
                 enemies.append(new_enemy)
     return new_player, x, y, enemies
-
 
 def main(level, music):
     running = True
@@ -524,8 +562,6 @@ if __name__ == '__main__':
             enemies_sprites = pygame.sprite.Group()
             bullets = []
             arrow = AnimatedSprite(load_image('cross.png'), 2, 1, 0, 0)
-            pygame.mixer.music.load('data/Grimes - Kill V Maim.mp3')
-            pygame.mixer.music.set_volume(0.4)
             if level == 1:
                 gameover, music, level_score = main('level.txt', music=True)
                 if gameover == 1:
@@ -549,7 +585,8 @@ if __name__ == '__main__':
                     gameover = final_screen()
                     pygame.mixer.music.stop()
                     nickname = vvod_nika()
-                    print(nickname, score)
+                    make_new_score(nickname, score)
+                    top_sc = top_screen()
                     game = False
                 elif gameover == 'start_screen':
                     game = False

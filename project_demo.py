@@ -7,8 +7,6 @@ from vvod import Pole_vvoda
 from pygame.math import Vector2
 
 pygame.init()
-pygame.mixer.music.load('data/Grimes - Kill V Maim.mp3')
-pygame.mixer.music.set_volume(0.4)
 vystrel = pygame.mixer.Sound('data/vystrel.wav')
 death = pygame.mixer.Sound('data/death.wav')
 pygame.mixer.Sound.set_volume(vystrel, 0.5)
@@ -526,6 +524,8 @@ if __name__ == '__main__':
             enemies_sprites = pygame.sprite.Group()
             bullets = []
             arrow = AnimatedSprite(load_image('cross.png'), 2, 1, 0, 0)
+            pygame.mixer.music.load('data/Grimes - Kill V Maim.mp3')
+            pygame.mixer.music.set_volume(0.4)
             if level == 1:
                 gameover, music, level_score = main('level.txt', music=True)
                 if gameover == 1:

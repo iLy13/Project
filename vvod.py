@@ -14,6 +14,11 @@ class Pole_vvoda():
         txt_surface = self.font.render(self.text, True, self.color)
         screen.blit(txt_surface, (self.input_box.x + 5, self.input_box.y + 5))
         pg.draw.rect(screen, self.color, self.input_box, 2)
+        font = pg.font.Font(None, 50)
+        text = font.render("Enter your nickname", True, self.color)
+        text_x = screen.get_width() // 2 - text.get_width() // 2
+        text_y = screen.get_height() // 2 - text.get_height() // 2
+        screen.blit(text, (text_x, text_y))
 
     def update(self, event):
         if event.type == pg.MOUSEBUTTONDOWN:

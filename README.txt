@@ -1,0 +1,2 @@
+"1-minute deal" - it is a top down shooter game. It is built on module 'pygame' for Python3. In this game you can move on the level, shoot enemies. There are only 2 levels in the game initially. 
+At the end of the game, you will see the final window, and you will also be able to record your passing result in the high score table.
